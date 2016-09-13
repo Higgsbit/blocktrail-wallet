@@ -608,6 +608,16 @@ angular.module('blocktrail.wallet').config(
                 }
             })
 
+            .state('app.wallet.buybtc', {
+                url: "/buy",
+                views: {
+                    "mainView@app.wallet": {
+                        templateUrl: "templates/buybtc/buybtc.buy.html",
+                        controller: 'WalletBuyBTCCtrl'
+                    }
+                }
+            })
+
             /*--- Send ---*/
             .state('app.wallet.send', {
                 url: "/send",
