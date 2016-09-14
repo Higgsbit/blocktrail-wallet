@@ -235,10 +235,18 @@ angular.module('blocktrail.wallet').run(
 
         //bitcoin uri intent handler
         $window.handleOpenURL = function(url) {
+            url = "" + url; // force string
             $log.debug("launching app with uri:" + url);
-            $rootScope.bitcoinuri = url;
-            $state.go('app.wallet.send');
-            $ionicSideMenuDelegate.toggleLeft(false);
+            if (url.startsWith("bitcoin")) {
+
+                $rootScope.bitcoinuri = url;
+                $state.go('app.wallet.send');
+                $ionicSideMenuDelegate.toggleLeft(false);
+            } else if (url.startsWith("btccomwallet://glideraCallback")) {
+                $rootScope.glideraCallback = url;
+                $state.go('app.wallet.buybtc.glidera_callback');
+                $ionicSideMenuDelegate.toggleLeft(false);
+            }
         };
     }
 );
@@ -610,10 +618,26 @@ angular.module('blocktrail.wallet').config(
 
             .state('app.wallet.buybtc', {
                 url: "/buy",
+                abstract: true,
+                template: "<ion-nav-view />"
+            })
+
+            .state('app.wallet.buybtc.choose', {
+                url: "/choose",
                 views: {
                     "mainView@app.wallet": {
                         templateUrl: "templates/buybtc/buybtc.buy.html",
                         controller: 'WalletBuyBTCCtrl'
+                    }
+                }
+            })
+
+            .state('app.wallet.buybtc.glidera_callback', {
+                url: "/glidera/callback",
+                views: {
+                    "mainView@app.wallet": {
+                        templateUrl: "templates/buybtc/buybtc.glidera_callback.html",
+                        controller: 'WalletBuyBTCGlideraCallbackCtrl'
                     }
                 }
             })
