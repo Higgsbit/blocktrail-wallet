@@ -2,7 +2,11 @@
     <ion-nav-title class="capitalise">{{ 'PROMO_CODES' | translate }}</ion-nav-title>
 
     <ion-content>
-        GLIDERA CALLBACK!
-
+        <div ng-if="errorMsg">
+            <h1 class="capitalise">{{ errorMsg | translate}}</h1>
+            <div>
+                {{ errorDetails }}
+            </div>
+        </div>
     </ion-content>
 </ion-view>

@@ -17,6 +17,9 @@ angular.module('blocktrail.wallet').service(
 
         showRebrandMessage: true,
 
+        glideraRequest: null,
+        glideraAccessToken: null,
+
         phoneNumber: null,
         phoneNationalNumber: null,
         phoneRegionCode: null,

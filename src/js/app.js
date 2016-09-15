@@ -36,7 +36,6 @@ angular.module('blocktrail.wallet').factory(
     }
 );
 
-/*--- Blocktrail Error Classes ---*/
 angular.module('blocktrail.wallet').config(function() {
     //merge in sdk error classes
     Object.keys(blocktrailSDK).forEach(function(val) {
@@ -51,6 +50,8 @@ angular.module('blocktrail.wallet').config(function() {
     blocktrail.ContactAddressError = Error.extend("ContactAddressError", 400);
     blocktrail.WalletPinError = Error.extend("WalletPinError", 400);
     blocktrail.WalletPollError = Error.extend("WalletPollError", 400);
+
+    window._ = window._ || blocktrailSDK.lodash;
 });
 
 angular.module('blocktrail.wallet').run(
@@ -67,6 +68,10 @@ angular.module('blocktrail.wallet').run(
         $rootScope.appVersion = CONFIG.VERSION;
         $rootScope.isAndroid = ionic.Platform.isAndroid();
         $rootScope.isIOS = ionic.Platform.isIOS();
+
+        if (CONFIG.DEBUG) {
+            blocktrailSDK.debug.enable('*,-pouchdb:*');
+        }
 
         facebookConnectPlugin.activateApp();
 
@@ -233,20 +238,9 @@ angular.module('blocktrail.wallet').run(
             });
         };
 
-        //bitcoin uri intent handler
+        // uri intent handler, rest is handled by LaunchController
         $window.handleOpenURL = function(url) {
-            url = "" + url; // force string
-            $log.debug("launching app with uri:" + url);
-            if (url.startsWith("bitcoin")) {
-
-                $rootScope.bitcoinuri = url;
-                $state.go('app.wallet.send');
-                $ionicSideMenuDelegate.toggleLeft(false);
-            } else if (url.startsWith("btccomwallet://glideraCallback")) {
-                $rootScope.glideraCallback = url;
-                $state.go('app.wallet.buybtc.glidera_callback');
-                $ionicSideMenuDelegate.toggleLeft(false);
-            }
+            $rootScope.handleOpenURL = "" + url;
         };
     }
 );
@@ -621,23 +615,30 @@ angular.module('blocktrail.wallet').config(
                 abstract: true,
                 template: "<ion-nav-view />"
             })
-
             .state('app.wallet.buybtc.choose', {
                 url: "/choose",
                 views: {
                     "mainView@app.wallet": {
-                        templateUrl: "templates/buybtc/buybtc.buy.html",
-                        controller: 'WalletBuyBTCCtrl'
+                        templateUrl: "templates/buybtc/buybtc.choose.html",
+                        controller: 'BuyBTCChooseCtrl'
                     }
                 }
             })
-
-            .state('app.wallet.buybtc.glidera_callback', {
-                url: "/glidera/callback",
+            .state('app.wallet.buybtc.glidera_bitid_callback', {
+                url: "/glidera/bitid/callback",
                 views: {
                     "mainView@app.wallet": {
                         templateUrl: "templates/buybtc/buybtc.glidera_callback.html",
-                        controller: 'WalletBuyBTCGlideraCallbackCtrl'
+                        controller: 'BuyBTCGlideraBitIDCallbackCtrl'
+                    }
+                }
+            })
+            .state('app.wallet.buybtc.glidera_oauth2_callback', {
+                url: "/glidera/oaoth2/callback",
+                views: {
+                    "mainView@app.wallet": {
+                        templateUrl: "templates/buybtc/buybtc.glidera_callback.html",
+                        controller: 'BuyBTCGlideraOauthCallbackCtrl'
                     }
                 }
             })
@@ -902,40 +903,6 @@ angular.module('blocktrail.wallet').config(
     }
 );
 
-
-
-// patching ES6 Promises :/
-if (typeof Promise !== "undefined") {
-    Promise.prototype.done = function() {
-        return this.then(
-            function(r) {
-                return r;
-            },
-            function(e) {
-                setTimeout(function() {
-                    throw e;
-                });
-            }
-        );
-    };
-}
-
-// patching promise library that PoucDB uses
-if (typeof PouchDB.utils.Promise.prototype.done === "undefined") {
-    PouchDB.utils.Promise.prototype.done = function() {
-        return this.then(
-            function(r) {
-                return r;
-            },
-            function(e) {
-                setTimeout(function() {
-                    throw e;
-                });
-            }
-        );
-    };
-}
-
 String.prototype.sentenceCase = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
 };
@@ -945,6 +912,12 @@ String.prototype.capitalize = function() {
         return txt.sentenceCase();
     });
 };
+
+if (!String.prototype.startsWith) {
+    String.prototype.startsWith = function(s) {
+        return this.substr(0, s.length) === s;
+    };
+}
 
 Array.prototype.unique = function() {
     return this.filter(function onlyUnique(value, index, self) {
@@ -998,6 +971,21 @@ if (!window.repeat) {
 
         return r;
     };
+}
+
+function parseQuery(url) {
+    url = (url || "").split("?");
+    if (url.length < 2) {
+        return {};
+    }
+    var qstr = url[1];
+    var query = {};
+    var a = qstr.split('&');
+    for (var i = 0; i < a.length; i++) {
+        var b = a[i].split('=');
+        query[decodeURIComponent(b[0])] = decodeURIComponent(b[1] || '');
+    }
+    return query;
 }
 
 /**

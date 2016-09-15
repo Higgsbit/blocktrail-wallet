@@ -53,7 +53,7 @@ angular.module('blocktrail.wallet').factory(
         return {
             db: db,
             reset: resetSingle,
-            resetAll: resetAll,
+            resetAll: resetAll
         };
     }
 );
