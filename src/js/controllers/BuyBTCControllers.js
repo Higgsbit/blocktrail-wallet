@@ -2,48 +2,117 @@ angular.module('blocktrail.wallet')
     .controller('BuyBTCChooseCtrl', function($q, $scope, $rootScope, $cordovaDialogs, settingsService, $ionicLoading, $translate, Wallet) {
         var bitcoin = blocktrailSDK.bitcoin;
 
+        // settingsService.$isLoaded().then(function() {
+        //     console.log('glideraAccessToken', !!settingsService.glideraAccessToken, settingsService.glideraAccessToken.accessToken);
+        // });
         $scope.goGlideraBrowser = function() {
             settingsService.$isLoaded().then(function() {
+                console.log('glideraAccessToken', !!settingsService.glideraAccessToken);
                 if (settingsService.glideraAccessToken) {
+                    console.log('glideraAccessToken.accessToken', settingsService.glideraAccessToken.accessToken);
+                    console.log('glideraAccessToken.userCanTransact', settingsService.glideraAccessToken.userCanTransact);
+                    if (settingsService.glideraAccessToken.userCanTransact) {
 
-                    var options = _.defaults({}, {
-                        https: true,
-                        host: 'sandbox.glidera.io',
-                        endpoint: '/api/v1',
-                        params: {},
-                        headers: {
-                            'Authorization': 'Bearer ' + settingsService.glideraAccessToken
-                        },
-                        contentMd5: false
-                    });
-                    var r = new Request(options);
+                        var options = _.defaults({}, {
+                            https: true,
+                            host: 'sandbox.glidera.io',
+                            endpoint: '/api/v1',
+                            params: {},
+                            headers: {
+                                'Authorization': 'Bearer ' + settingsService.glideraAccessToken.accessToken
+                            },
+                            contentMd5: false
+                        });
 
-                    return r.request('GET', '/user/status ', {}, null)
-                        .then(function(result) {
-                            console.log(result);
-                            console.log(result.userCanTransact);
+                        var r = new blocktrailSDK.Request(options);
 
-                            return settingsService.$isLoaded().then(function() {
-                                // @TODO: encrypt with PIN
-                                settingsService.glideraAccessToken.userCanTransact = result.userCanTransact;
+                        return r.request('POST', '/prices/buy', {}, {
+                            qty: 0.1
+                        })
+                            .then(function(result) {
+                                console.log('price', JSON.stringify(result, null, 4));
 
-                                return settingsService.$store().then(function() {
+                                return Wallet.getNewAddress().then(function(address) {
+                                    var options = _.defaults({}, {
+                                        https: true,
+                                        host: 'sandbox.glidera.io',
+                                        endpoint: '/api/v1',
+                                        params: {},
+                                        headers: {
+                                            'Authorization': 'Bearer ' + settingsService.glideraAccessToken.accessToken
+                                        },
+                                        contentMd5: false
+                                    });
 
+                                    var r = new blocktrailSDK.Request(options);
+
+                                    return r.request('POST', '/buy', {}, {
+                                        destinationAddress: address,
+                                        qty: 0.1,
+                                        priceUuid: result.priceUuid,
+                                        useCurrentPrice: false
+                                    })
+                                        .then(function(result) {
+                                            console.log('buy', JSON.stringify(result, null, 4));
+                                        })
+                                    ;
                                 });
-                            });
-                        })
-                        .then(function() {
-                            $ionicLoading.hide();
-                        })
-                        .then(function() {}, function(err) {
-                            console.error(err);
-                            console.error("" + err);
-                            console.error(err.msg);
-                            console.error(err.message);
-                            $ionicLoading.hide();
-                            throw err;
-                        })
+                            })
+                            .then(function() {
+                                $ionicLoading.hide();
+                            }, function(err) {
+                                console.error(err);
+                                console.error("" + err);
+                                console.error(err.msg);
+                                console.error(err.message);
+                                $ionicLoading.hide();
+                                throw err;
+                            })
                         ;
+
+                    } else {
+                        var options = _.defaults({}, {
+                            https: true,
+                            host: 'sandbox.glidera.io',
+                            endpoint: '/api/v1',
+                            params: {},
+                            headers: {
+                                'Authorization': 'Bearer ' + settingsService.glideraAccessToken.accessToken
+                            },
+                            contentMd5: false
+                        });
+
+                        var r = new blocktrailSDK.Request(options);
+
+                        return r.request('GET', '/user/status ', {}, null)
+                            .then(function(result) {
+                                console.log('status');
+                                console.log(result);
+                                console.log(result.userCanTransact);
+
+                                return settingsService.$isLoaded().then(function() {
+                                    // @TODO: encrypt with PIN
+                                    settingsService.glideraAccessToken.userCanTransact = result.userCanTransact;
+
+                                    return settingsService.$store().then(function() {
+                                        $state.go('app.wallet.buybtc.choose');
+                                    });
+                                });
+                            })
+                            .then(function() {
+                                $ionicLoading.hide();
+                            })
+                            .then(function() {
+                            }, function(err) {
+                                console.error(err);
+                                console.error("" + err);
+                                console.error(err.msg);
+                                console.error(err.message);
+                                $ionicLoading.hide();
+                                throw err;
+                            })
+                        ;
+                    }
 
                 } else {
                     var clientId = "9074010d6e573bd7b06645735ba315c8";
@@ -153,7 +222,7 @@ angular.module('blocktrail.wallet')
                     params: {},
                     contentMd5: false
                 });
-                var r = new Request(options);
+                var r = new blocktrailSDK.Request(options);
 
                 return r.request('POST', '/oauth/token', {}, {
                     grant_type: "authorization_code",
@@ -163,6 +232,7 @@ angular.module('blocktrail.wallet')
                     client_secret: clientSecret
                 })
                     .then(function(result) {
+                        console.log('glidera access');
                         console.log(result.access_token);
                         console.log(result.scope);
 
@@ -174,7 +244,8 @@ angular.module('blocktrail.wallet')
                             };
 
                             return settingsService.$store().then(function() {
-
+                                console.log('SAVED');
+                                $state.go('app.wallet.buybtc.choose');
                             });
                         });
                     })
@@ -186,8 +257,9 @@ angular.module('blocktrail.wallet')
                         console.error("" + err);
                         console.error(err.msg);
                         console.error(err.message);
+                        $scope.errorMsg = 'GLIDERA_ERR';
+                        $scope.errorDetails = "" + err;
                         $ionicLoading.hide();
-                        throw err;
                     })
                 ;
 
@@ -205,7 +277,6 @@ angular.module('blocktrail.wallet')
 
 angular.module('blocktrail.wallet')
     .controller('BuyBTCGlideraBitIDCallbackCtrl', function($scope, $state, $rootScope, $ionicLoading, settingsService) {
-            var Request = blocktrailSDK.Request;
             console.log('glideraCallback? ' + $scope.glideraCallback);
             if ($scope.glideraCallback) {
                 var qs = parseQuery($scope.glideraCallback);
@@ -230,7 +301,7 @@ angular.module('blocktrail.wallet')
                             })
                         });
 
-                        var r = new Request(options);
+                        var r = new blocktrailSDK.Request(options);
 
                         console.log('request...');
                         return r.request('POST', '/authentication/oauth1/create', {}, "")

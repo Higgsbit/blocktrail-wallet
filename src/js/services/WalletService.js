@@ -8,7 +8,7 @@ angular.module('blocktrail.wallet').factory(
 
             self.poll = null;
             self.interval = null;
-            self.noPolling = false;
+            self.noPolling = true;
             self.isRefilling = null;
             self.addressRefillPromise = null;
 
