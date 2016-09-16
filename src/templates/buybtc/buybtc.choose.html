@@ -1,10 +1,20 @@
-<ion-view class="state-promo">
-    <ion-nav-title class="capitalise">{{ 'PROMO_CODES' | translate }}</ion-nav-title>
+<ion-view class="state-buybtc">
+    <ion-nav-title class="capitalise">{{ 'BUYBTC_NAVTITLE' | translate }}</ion-nav-title>
 
     <ion-content>
-        <button class="button" ng-click="goGlideraBrowser()">Glidera Browser</button>
-        <br />
-        <button class="button" ng-click="goGlideraBitID()">Glidera BitID</button>
+        <div class="item item-text-wrap">
+            <h2 class="text-neutral">{{ 'BUYBTC_CHOOSE_TITLE' | translate }}</h2>
+            <p class="padding-t">{{ 'BUYBTC_CHOOSE_SUBTITLE' | translate }}</p>
+        </div>
 
+        <h3 class="group-title capitalise" on-hold="resetBuyBTC()">{{ 'BUYBTC_PROVIDERS' | translate }}</h3>
+        <div class="list list-inset">
+            <div class="item item-button-right" ng-click="goGlideraBrowser()">
+                <span class="sentence-case">Glidera</span>
+                <button class="button button-clear">
+                    <i class="icon ion-chevron-right"></i>
+                </button>
+            </div>
+        </div>
     </ion-content>
 </ion-view>

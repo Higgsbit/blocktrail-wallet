@@ -186,10 +186,10 @@ angular.module('blocktrail.wallet')
                                 $scope.message = {title: 'SUCCESS', title_class: 'text-good', body: ''};
 
                                 //save the default settings and do a profile sync
-                                settingsService.username = $scope.form.username;
-                                settingsService.displayName = $scope.form.username;
+                                settingsService.username = $scope.form.username || result.data.username;
+                                settingsService.displayName = $scope.form.username || result.data.username;
                                 settingsService.enableContacts = false;
-                                settingsService.email = $scope.form.email;
+                                settingsService.email = $scope.form.email || result.data.email;
                                 settingsService.$store().then(function() {
                                     settingsService.$syncProfileDown();
                                     $timeout(function() {

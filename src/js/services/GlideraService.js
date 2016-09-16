@@ -26,16 +26,20 @@ angular.module('blocktrail.wallet').factory(
 
         var oauth2 = function() {
             var uuid = Math.ceil((new Date).getTime() / 1000);
+            var scope = ['transact'].join(',');
             var qs = [
                 'response_type=code',
                 'client_id=' + clientId,
                 'state=' + uuid,
+                'scope=' + scope,
+                'required_scope=' + scope,
+                'login_hint=' + (settingsService.email || "").replace(/\+.*@/, "@"),
                 'redirect_uri=' + returnuri + "/oauth2"
             ];
 
             var glideraUrl = "https://sandbox.glidera.io/oauth2/auth?" + qs.join("&");
 
-            console.log('oauth2', glideraUrl);
+            $log.debug('oauth2', glideraUrl);
 
             window.open(glideraUrl, '_system');
         };
@@ -46,7 +50,7 @@ angular.module('blocktrail.wallet').factory(
                 .then(function(glideraCallback) {
                     var qs = parseQuery(glideraCallback);
 
-                    console.log('qs? ', JSON.stringify(qs, null, 4));
+                    $log.debug('qs? ', JSON.stringify(qs, null, 4));
 
                     if (!qs.code) {
                         throw new Error(qs.error_message.replace("+", " "));
@@ -62,7 +66,7 @@ angular.module('blocktrail.wallet').factory(
                         client_secret: clientSecret
                     })
                         .then(function(result) {
-                            console.log('oauthtoken', JSON.stringify(result, null, 4));
+                            $log.debug('oauthtoken', JSON.stringify(result, null, 4));
 
                             return settingsService.$isLoaded().then(function() {
                                 // @TODO: encrypt with PIN
@@ -72,7 +76,7 @@ angular.module('blocktrail.wallet').factory(
                                 };
 
                                 return settingsService.$store().then(function() {
-                                    console.log('SAVED');
+                                    $log.debug('SAVED');
                                     return true;
                                 });
                             });
@@ -85,7 +89,7 @@ angular.module('blocktrail.wallet').factory(
 
         var userCanTransact = function() {
             return settingsService.$isLoaded().then(function() {
-                console.log('glideraAccessToken', JSON.stringify(settingsService.glideraAccessToken, null, 4));
+                $log.debug('glideraAccessToken', JSON.stringify(settingsService.glideraAccessToken, null, 4));
 
                 if (!settingsService.glideraAccessToken) {
                     return false;
@@ -104,7 +108,7 @@ angular.module('blocktrail.wallet').factory(
 
                     return r.request('GET', '/user/status ', {}, null)
                         .then(function(result) {
-                            console.log('status', JSON.stringify(result, null, 4));
+                            $log.debug('status', JSON.stringify(result, null, 4));
 
                             return settingsService.$isLoaded().then(function() {
                                 // @TODO: encrypt with PIN
@@ -123,13 +127,13 @@ angular.module('blocktrail.wallet').factory(
 
         var accessToken = function() {
             return settingsService.$isLoaded().then(function() {
-                console.log('glideraAccessToken', JSON.stringify(settingsService.glideraAccessToken, null, 4));
+                $log.debug('glideraAccessToken', JSON.stringify(settingsService.glideraAccessToken, null, 4));
 
                 return settingsService.glideraAccessToken ? settingsService.glideraAccessToken.accessToken : null;
             });
         };
 
-        var buyPrices = function(qty) {
+        var buyPrices = function(qty, fiat) {
             return userCanTransact().then(function(userCanTransact) {
                 if (!userCanTransact) {
                     throw new Error("User can't transact!");
@@ -138,10 +142,11 @@ angular.module('blocktrail.wallet').factory(
                 return accessToken().then(function(accessToken) {
                     var r = createRequest(null, accessToken);
                     return r.request('POST', '/prices/buy', {}, {
-                        qty: qty
+                        qty: qty,
+                        fiat: fiat
                     })
                         .then(function(result) {
-                            console.log('buyPrices', JSON.stringify(result, null, 4));
+                            $log.debug('buyPrices', JSON.stringify(result, null, 4));
 
                             return result;
                         })
@@ -167,7 +172,7 @@ angular.module('blocktrail.wallet').factory(
                             useCurrentPrice: false
                         })
                             .then(function(result) {
-                                console.log('buy', JSON.stringify(result, null, 4));
+                                $log.debug('buy', JSON.stringify(result, null, 4));
 
                                 return result;
                             })

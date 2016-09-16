@@ -642,6 +642,15 @@ angular.module('blocktrail.wallet').config(
                     }
                 }
             })
+            .state('app.wallet.buybtc.buy', {
+                url: "/buy?provider",
+                views: {
+                    "mainView@app.wallet": {
+                        templateUrl: "templates/buybtc/buybtc.buy.html",
+                        controller: 'BuyBTCBuyCtrl'
+                    }
+                }
+            })
 
             /*--- Send ---*/
             .state('app.wallet.send', {
