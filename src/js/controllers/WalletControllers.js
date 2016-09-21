@@ -107,35 +107,45 @@ angular.module('blocktrail.wallet')
         $timeout(function() { $rootScope.syncContacts(); }, 4000);
         $timeout(function() { Wallet.refillOfflineAddresses(1); }, 6000);
 
-        var pricePolling = $interval(function() {
-            if ($rootScope.STATE.ACTIVE) {
-                $rootScope.getPrice();
-            }
-        }, 20000);
+        if (CONFIG.POLL_INTERVAL_PRICE) {
+            var pricePolling = $interval(function() {
+                if ($rootScope.STATE.ACTIVE) {
+                    $rootScope.getPrice();
+                }
+            }, CONFIG.POLL_INTERVAL_PRICE);
+        }
 
-        var balancePolling = $interval(function() {
-            if ($rootScope.STATE.ACTIVE) {
-                $rootScope.getBalance();
-            }
-        }, 10000);
+        if (CONFIG.POLL_INTERVAL_BALANCE) {
+            var balancePolling = $interval(function() {
+                if ($rootScope.STATE.ACTIVE) {
+                    $rootScope.getBalance();
+                }
+            }, CONFIG.POLL_INTERVAL_BALANCE);
+        }
 
-        var blockheightPolling = $interval(function() {
-            if ($rootScope.STATE.ACTIVE) {
-                $rootScope.getBlockHeight();
-            }
-        }, 11000); // small offset form balance polling to avoid 2 requests at the same time
+        if (CONFIG.POLL_INTERVAL_BLOCKHEIGHT) {
+            var blockheightPolling = $interval(function() {
+                if ($rootScope.STATE.ACTIVE) {
+                    $rootScope.getBlockHeight();
+                }
+            }, CONFIG.POLL_INTERVAL_BLOCKHEIGHT);
+        }
 
-        var contactSyncPolling = $interval(function() {
-            if ($rootScope.STATE.ACTIVE) {
-                $rootScope.syncContacts();
-            }
-        }, 150000); // 2.5 mins
+        if (CONFIG.POLL_INTERVAL_CONTACTS) {
+            var contactSyncPolling = $interval(function() {
+                if ($rootScope.STATE.ACTIVE) {
+                    $rootScope.syncContacts();
+                }
+            }, CONFIG.POLL_INTERVAL_CONTACTS);
+        }
 
-        var profileSyncPolling = $interval(function() {
-            if ($rootScope.STATE.ACTIVE) {
-                $rootScope.syncProfile();
-            }
-        }, 300500); // 5 mins
+        if (CONFIG.POLL_INTERVAL_PROFILE) {
+            var profileSyncPolling = $interval(function() {
+                if ($rootScope.STATE.ACTIVE) {
+                    $rootScope.syncProfile();
+                }
+            }, CONFIG.POLL_INTERVAL_PROFILE);
+        }
     }
 );
 

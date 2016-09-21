@@ -6,7 +6,10 @@ angular.module('blocktrail.wallet')
         // load chooseRegion from settingsService
         //  show loading spinner while we wait (should be microseconds)
         $scope.chooseRegion = null;
-        $ionicLoading.show();
+        $ionicLoading.show({
+            template: "<div>{{ 'WORKING' | translate }}...</div><ion-spinner></ion-spinner>",
+            hideOnStateChange: true
+        });
         settingsService.$isLoaded().then(function() {
             $scope.chooseRegion = _.defaults({}, settingsService.buyBTCRegion, {
                 region: null,
@@ -24,7 +27,7 @@ angular.module('blocktrail.wallet')
             $scope.chooseRegion.regionOk = okRegions.indexOf(region) !== -1;
 
             $ionicScrollDelegate.scrollTop();
-            
+
             settingsService.$isLoaded().then(function() {
                 settingsService.buyBTCRegion = _.defaults({}, $scope.chooseRegion);
                 return settingsService.$store();
@@ -289,20 +292,36 @@ angular.module('blocktrail.wallet')
             }
         };
 
-        // update main price for display straight away
-        updateMainPrice();
+        var init = function() {
+            $ionicLoading.show({
+                template: "<div>{{ 'WORKING' | translate }}...</div><ion-spinner></ion-spinner>",
+                hideOnStateChange: true
+            });
 
-        // @TODO: DEBUG
-        // $scope.sendInput.btcValue = 0.02;
-        // updateInputPrice();
+            return glideraService.accessToken()
+                .then(function(accessToken) { return accessToken; }, function(err) { return null; })
+                .then(function(accessToken) {
+                    if (!accessToken) {
+                        return init();
+                    }
 
-        // update every minute
-        $interval(function() {
-            // update main price
-            updateMainPrice();
-            // update input price
-            updateInputPrice();
-        }, 60 * 1000);
+                    $ionicLoading.hide();
+
+                    // update main price for display straight away
+                    updateMainPrice();
+
+                    // update every minute
+                    $interval(function() {
+                        // update main price
+                        updateMainPrice();
+                        // update input price
+                        updateInputPrice();
+                    }, 60 * 1000);
+                })
+            ;
+        };
+
+        init();
 
         $scope.buyBTC = function() {
             if ($scope.buyProvider == 'glidera') {

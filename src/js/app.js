@@ -617,6 +617,9 @@ angular.module('blocktrail.wallet').config(
             })
             .state('app.wallet.buybtc.choose', {
                 url: "/choose",
+                data: {
+                    clearHistory: true  //always clear history when entering this state
+                },
                 views: {
                     "mainView@app.wallet": {
                         templateUrl: "templates/buybtc/buybtc.choose.html",

@@ -161,7 +161,7 @@ angular.module('blocktrail.wallet').factory(
         Wallet.prototype.setupInterval = function() {
             var self = this;
 
-            if(self.noPolling) {
+            if(self.noPolling || !CONFIG.POLL_INTERVAL_TRANSACTIONS) {
                 return false;
             }
 
@@ -171,7 +171,7 @@ angular.module('blocktrail.wallet').factory(
                 if ($rootScope.STATE.ACTIVE) {
                     self.pollTransactions();
                 }
-            }, 10000);
+            }, CONFIG.POLL_INTERVAL_TRANSACTIONS);
         };
 
         /**
@@ -635,9 +635,7 @@ angular.module('blocktrail.wallet').factory(
 
         var wallet = new Wallet();
 
-        if (CONFIG.POLL_INTERVAL) {
-            wallet.setupInterval(CONFIG.POLL_INTERVAL);
-        }
+        wallet.setupInterval();
 
         return wallet;
     }

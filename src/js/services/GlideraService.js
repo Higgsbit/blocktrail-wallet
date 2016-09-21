@@ -1,9 +1,19 @@
 angular.module('blocktrail.wallet').factory(
     'glideraService',
-    function(CONFIG, $log, $q, Wallet, $cordovaDialogs, $translate, settingsService) {
+    function(CONFIG, $log, $q, Wallet, $cordovaDialogs, $translate, $timeout, $ionicLoading, settingsService) {
         var clientId = "9074010d6e573bd7b06645735ba315c8";
         var clientSecret = "02cc9562bd2049b6fadb88578bc4c723";
         var returnuri = "btccomwallet://glideraCallback";
+
+        var decryptedAccessToken = null;
+
+        var setDecryptedAccessToken = function(accessToken) {
+            decryptedAccessToken = accessToken;
+
+            $timeout(function() {
+                decryptedAccessToken = null;
+            }, 30 * 60 * 1000); // 30min
+        };
 
         var createRequest = function(options, accessToken, twoFactor) {
             options = options || {};
@@ -63,6 +73,9 @@ angular.module('blocktrail.wallet').factory(
         };
 
         var handleOauthCallback = function(glideraCallback) {
+            if (!glideraCallback) {
+                return $q.reject(new Error("no glideraCallback"));
+            }
 
             return $q.when(glideraCallback)
                 .then(function(glideraCallback) {
@@ -86,21 +99,61 @@ angular.module('blocktrail.wallet').factory(
                         .then(function(result) {
                             $log.debug('oauthtoken', JSON.stringify(result, null, 4));
 
-                            return settingsService.$isLoaded().then(function() {
-                                // @TODO: encrypt with PIN
-                                settingsService.glideraAccessToken = {
-                                    accessToken: result.access_token,
-                                    scope: result.scope
-                                };
+                            var accessToken = result.access_token;
+                            var glideraAccessToken = {
+                                scope: result.scope
+                            };
 
-                                return settingsService.$store().then(function() {
-                                    $log.debug('SAVED');
-                                    return true;
-                                });
-                            });
-                        })
-                    ;
-                })
+                            return settingsService.$isLoaded().then(function() {
+                                return $cordovaDialogs.prompt(
+                                        $translate.instant('MSG_ENTER_PIN').sentenceCase(),
+                                        $translate.instant('MSG_BUYBTC_PIN_TO_ENCRYPT').capitalize(),
+                                        [$translate.instant('OK'), $translate.instant('CANCEL').sentenceCase()],
+                                        "",
+                                        true,   //isPassword
+                                        "tel"   //input type (uses html5 style)
+                                    );
+                                })
+                                    .then(function(dialogResult) {
+                                        if (dialogResult.buttonIndex == 2) {
+                                            return $q.reject('CANCELLED');
+                                        }
+                                        //decrypt password with the provided PIN
+                                        $ionicLoading.show({
+                                            template: "<div>{{ 'WORKING' | translate }}...</div><ion-spinner></ion-spinner>",
+                                            hideOnStateChange: true
+                                        });
+
+                                        return Wallet.unlockData(dialogResult.input1).then(function(unlockData) {
+
+                                            // still gotta support legacy wallet where we encrypted the password instead of secret
+                                            if (unlockData.secret) {
+                                                glideraAccessToken.encryptedWith = 'secret';
+                                                glideraAccessToken.encryptedAccessToken = CryptoJS.AES.encrypt(accessToken, unlockData.secret).toString();
+                                            } else {
+                                                glideraAccessToken.encryptedWith = 'password';
+                                                glideraAccessToken.encryptedAccessToken = CryptoJS.AES.encrypt(accessToken, unlockData.password).toString();
+                                            }
+                                        })
+                                    })
+                                    .then(function() {
+                                        setDecryptedAccessToken(accessToken);
+                                        settingsService.glideraAccessToken = glideraAccessToken;
+
+                                        return settingsService.$store().then(function() {
+                                            $log.debug('SAVED');
+                                        });
+                                    })
+                                    .then(function() {
+                                        $ionicLoading.hide();
+                                    }, function(err) {
+                                        $ionicLoading.hide();
+                                        throw err;
+                                    })
+                                ;
+                            })
+                        ;
+                    })
                 .then(function(result) { return result }, function(err) { $log.log(err); throw err; })
             ;
         };
@@ -192,12 +245,69 @@ angular.module('blocktrail.wallet').factory(
             ;
         };
 
+        var accessTokenPromise = null; // use promise to avoid doing things twice
         var accessToken = function() {
-            return settingsService.$isLoaded().then(function() {
+            if (decryptedAccessToken) {
+                $log.debug('decryptedAccessToken');
+                return $q.when(decryptedAccessToken);
+            } else if (accessTokenPromise) {
+                return accessTokenPromise;
+            }
+
+            accessTokenPromise = settingsService.$isLoaded().then(function() {
                 $log.debug('glideraAccessToken', JSON.stringify(settingsService.glideraAccessToken, null, 4));
 
-                return settingsService.glideraAccessToken ? settingsService.glideraAccessToken.accessToken : null;
+                return settingsService.glideraAccessToken ? settingsService.glideraAccessToken.encryptedAccessToken : null;
+            }).then(function(encryptedAccessToken) {
+                if (!encryptedAccessToken) {
+                    return;
+                }
+
+                return $cordovaDialogs.prompt(
+                    $translate.instant('MSG_ENTER_PIN').sentenceCase(),
+                    $translate.instant('MSG_BUYBTC_PIN_TO_DECRYPT').capitalize(),
+                    [$translate.instant('OK'), $translate.instant('CANCEL').sentenceCase()],
+                    "",
+                    true,   //isPassword
+                    "tel"   //input type (uses html5 style)
+                ).then(function(dialogResult) {
+                    if (dialogResult.buttonIndex == 2) {
+                        return $q.reject('CANCELLED');
+                    }
+                    //decrypt password with the provided PIN
+                    $ionicLoading.show({
+                        template: "<div>{{ 'WORKING' | translate }}...</div><ion-spinner></ion-spinner>",
+                        hideOnStateChange: true
+                    });
+
+                    return Wallet.unlockData(dialogResult.input1).then(function(unlockData) {
+                        // still gotta support legacy wallet where we encrypted the password instead of secret
+                        var accessToken;
+                        if (unlockData.secret) {
+                            accessToken = CryptoJS.AES.decrypt(encryptedAccessToken, unlockData.secret).toString(CryptoJS.enc.Utf8);
+                        } else {
+                            accessToken = CryptoJS.AES.decrypt(encryptedAccessToken, unlockData.password).toString(CryptoJS.enc.Utf8);
+                        }
+
+                        setDecryptedAccessToken(accessToken);
+
+                        return accessToken;
+                    })
+                })
+                    .then(function(r) {
+                        $ionicLoading.hide();
+                        accessTokenPromise = null;
+                        return r;
+                    }, function(err) {
+                        $ionicLoading.hide();
+                        accessTokenPromise = null;
+                        $log.debug(err);
+                        throw err;
+                    })
+                ;
             });
+
+            return accessTokenPromise;
         };
 
         var buyPrices = function(qty, fiat) {
