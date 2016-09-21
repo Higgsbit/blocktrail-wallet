@@ -635,7 +635,9 @@ angular.module('blocktrail.wallet').factory(
 
         var wallet = new Wallet();
 
-        wallet.setupInterval(8000);
+        if (CONFIG.POLL_INTERVAL) {
+            wallet.setupInterval(CONFIG.POLL_INTERVAL);
+        }
 
         return wallet;
     }

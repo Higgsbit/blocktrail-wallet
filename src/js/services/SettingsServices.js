@@ -20,6 +20,8 @@ angular.module('blocktrail.wallet').service(
         glideraRequest: null,
         glideraAccessToken: null,
 
+        buyBTCRegion: null,
+
         phoneNumber: null,
         phoneNationalNumber: null,
         phoneRegionCode: null,

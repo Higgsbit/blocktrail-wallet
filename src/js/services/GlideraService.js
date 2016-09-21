@@ -1,15 +1,18 @@
 angular.module('blocktrail.wallet').factory(
     'glideraService',
-    function(CONFIG, $log, $q, Wallet, settingsService) {
+    function(CONFIG, $log, $q, Wallet, $cordovaDialogs, $translate, settingsService) {
         var clientId = "9074010d6e573bd7b06645735ba315c8";
         var clientSecret = "02cc9562bd2049b6fadb88578bc4c723";
         var returnuri = "btccomwallet://glideraCallback";
 
-        var createRequest = function(options, accessToken) {
+        var createRequest = function(options, accessToken, twoFactor) {
             options = options || {};
             var headers = {};
             if (accessToken) {
                 headers['Authorization'] = 'Bearer ' + accessToken;
+            }
+            if (twoFactor) {
+                headers['X-2FA-CODE'] = twoFactor;
             }
 
             options = _.defaults({}, (options || {}), {
@@ -33,7 +36,7 @@ angular.module('blocktrail.wallet').factory(
                 'state=' + uuid,
                 'scope=' + scope,
                 'required_scope=' + scope,
-                'login_hint=' + (settingsService.email || "").replace(/\+.*@/, "@"),
+                'login_hint=' + (settingsService.email || "").replace(/\+.*@/, "@"), // name+label@mail.com isn't supported by glidera
                 'redirect_uri=' + returnuri + "/oauth2"
             ];
 
@@ -42,6 +45,21 @@ angular.module('blocktrail.wallet').factory(
             $log.debug('oauth2', glideraUrl);
 
             window.open(glideraUrl, '_system');
+        };
+
+        var setup = function() {
+            return accessToken().then(function(accessToken) {
+                var qs = [
+                    'redirect_uri=' + returnuri + "/oauth2",
+                    'access_token=' + accessToken
+                ];
+
+                var glideraUrl = "https://sandbox.glidera.io/user/setup?" + qs.join("&");
+
+                $log.debug('setup', glideraUrl);
+
+                window.open(glideraUrl, '_system');
+            });
         };
 
         var handleOauthCallback = function(glideraCallback) {
@@ -81,21 +99,19 @@ angular.module('blocktrail.wallet').factory(
                                 });
                             });
                         })
-                        ;
+                    ;
                 })
-                .then(function(result) { return result }, function(err) { $log.log(err); throw err; });
+                .then(function(result) { return result }, function(err) { $log.log(err); throw err; })
             ;
-        }
+        };
 
         var userCanTransact = function() {
             return settingsService.$isLoaded().then(function() {
-                $log.debug('glideraAccessToken', JSON.stringify(settingsService.glideraAccessToken, null, 4));
-
                 if (!settingsService.glideraAccessToken) {
                     return false;
                 }
 
-                if (typeof settingsService.glideraAccessToken.userCanTransact !== "undefined") {
+                if (settingsService.glideraAccessToken.userCanTransact === true) {
                     return settingsService.glideraAccessToken.userCanTransact;
                 }
 
@@ -111,8 +127,8 @@ angular.module('blocktrail.wallet').factory(
                             $log.debug('status', JSON.stringify(result, null, 4));
 
                             return settingsService.$isLoaded().then(function() {
-                                // @TODO: encrypt with PIN
                                 settingsService.glideraAccessToken.userCanTransact = result.userCanTransact;
+                                settingsService.glideraAccessToken.userCanTransactInfo = _.defaults({}, result.userCanTransactInfo);
 
                                 return settingsService.$store().then(function() {
                                     return result.userCanTransact;
@@ -122,7 +138,58 @@ angular.module('blocktrail.wallet').factory(
                         ;
                 });
             })
-                .then(function(userCanTransact) { return userCanTransact }, function(err) { $log.log(err); throw err; });
+                .then(function(userCanTransact) { return userCanTransact; }, function(err) { $log.log(err); throw err; })
+                ;
+        };
+
+        var twoFactor = function() {
+            return twoFactorMode().then(function(twoFactorMode) {
+                if (twoFactorMode === "NONE") {
+                    return;
+                } else {
+                    return $cordovaDialogs.prompt(
+                        $translate.instant('MSG_BUYBTC_GLIDERA_2FA_BODY', {
+                            mode: twoFactorMode
+                        }).sentenceCase(),
+                        $translate.instant('MSG_BUYBTC_GLIDERA_2FA_TITLE').capitalize(),
+                        [$translate.instant('OK'), $translate.instant('CANCEL').sentenceCase()],
+                        ""
+                    )
+                    .then(function(dialogResult) {
+                        if (dialogResult.buttonIndex == 2) {
+                            return $q.reject('CANCELLED');
+                        }
+
+                        return dialogResult.input1;
+                    });
+                }
+            });
+        };
+
+        var twoFactorMode = function() {
+            return settingsService.$isLoaded().then(function() {
+                if (!settingsService.glideraAccessToken) {
+                    return false;
+                }
+
+                return accessToken().then(function(accessToken) {
+                    if (!accessToken) {
+                        return false;
+                    }
+
+                    var r = createRequest(null, accessToken);
+
+                    return r.request('GET', '/authentication/get2faCode', {}, null)
+                        .then(function(result) {
+                            $log.debug('get2faCode', JSON.stringify(result, null, 4));
+
+                            return result.mode;
+                        })
+                    ;
+                });
+            })
+                .then(function(userCanTransact) { return userCanTransact; }, function(err) { $log.log(err); throw err; })
+            ;
         };
 
         var accessToken = function() {
@@ -150,7 +217,7 @@ angular.module('blocktrail.wallet').factory(
 
                             return result;
                         })
-                        ;
+                    ;
                 });
             });
         };
@@ -164,19 +231,22 @@ angular.module('blocktrail.wallet').factory(
                 return accessToken().then(function(accessToken) {
 
                     return Wallet.getNewAddress().then(function(address) {
-                        var r = createRequest(null, accessToken);
-                        return r.request('POST', '/buy', {}, {
-                            destinationAddress: address,
-                            qty: qty,
-                            priceUuid: priceUuid,
-                            useCurrentPrice: false
-                        })
-                            .then(function(result) {
-                                $log.debug('buy', JSON.stringify(result, null, 4));
 
-                                return result;
+                        return twoFactor().then(function(twoFactor) {
+                            var r = createRequest(null, accessToken, twoFactor);
+                            return r.request('POST', '/buy', {}, {
+                                destinationAddress: address,
+                                qty: qty,
+                                priceUuid: priceUuid,
+                                useCurrentPrice: false
                             })
-                        ;
+                                .then(function(result) {
+                                    $log.debug('buy', JSON.stringify(result, null, 4));
+
+                                    return result;
+                                })
+                            ;
+                        });
                     });
                 });
             });
@@ -185,6 +255,8 @@ angular.module('blocktrail.wallet').factory(
         return {
             createRequest: createRequest,
             oauth2: oauth2,
+            setup: setup,
+            twoFactor: twoFactor,
             handleOauthCallback: handleOauthCallback,
             accessToken: accessToken,
             userCanTransact: userCanTransact,

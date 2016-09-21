@@ -6,6 +6,10 @@ angular.module('blocktrail.wallet').factory(
         var db = function(name) {
             if (!dbs[name]) {
                 dbs[name] = new PouchDB(name, {adapter: CONFIG.POUCHDB_DRIVER});
+
+                dbs[name].on('error', function(err) {
+                    alert(name + ' ERR');
+                });
             }
 
             return dbs[name];
