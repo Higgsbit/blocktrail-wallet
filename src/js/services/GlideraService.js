@@ -142,6 +142,7 @@ angular.module('blocktrail.wallet').factory(
 
                                         return settingsService.$store().then(function() {
                                             $log.debug('SAVED');
+                                            return settingsService.$syncSettingsUp();
                                         });
                                     })
                                     .then(function() {

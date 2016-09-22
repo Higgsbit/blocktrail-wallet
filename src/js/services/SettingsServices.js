@@ -170,4 +170,44 @@ angular.module('blocktrail.wallet').service(
             });
     };
 
+    this.$syncSettingsUp = function() {
+        var self = this;
+
+        return $q.when(sdkService.sdk())
+            .then(function(sdk) {
+                var settingsData = {
+                    localCurrency: self.localCurrency,
+                    // language: self.language,
+                    username: self.username,
+                    email: self.email,
+                    glideraAccessToken: self.glideraAccessToken,
+                    buyBTCRegion: self.buyBTCRegion
+                };
+
+                return sdk.syncSettings(settingsData);
+            })
+        ;
+    };
+
+    this.$syncSettingsDown = function() {
+        var self = this;
+        return $q.when(sdkService.sdk())
+            .then(function(sdk) {
+                return sdk.getSettings();
+            })
+            .then(function(result) {
+                return self.$isLoaded().then(function() {
+                    // self.language = result.language !== null ? result.language : self.language; // not until we support language switching
+                    self.localCurrency = result.localCurrency !== null ? result.localCurrency : self.localCurrency;
+                    self.username = result.username;
+                    self.email = result.email;
+                    self.glideraAccessToken = result.glideraAccessToken;
+                    self.buyBTCRegion = result.buyBTCRegion;
+
+                    return self.$store();
+                });
+            })
+        ;
+    };
+
 });

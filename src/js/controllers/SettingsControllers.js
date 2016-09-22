@@ -689,7 +689,8 @@ angular.module('blocktrail.wallet')
         $scope.form = {selected: ''};
 
         $scope.updateSettings = function(){
-            settingsService.$store().then(function(){
+            settingsService.$store().then(function() {
+                settingsService.$syncSettingsUp();
                 $btBackButtonDelegate.goBack();
             });
         };
@@ -707,8 +708,9 @@ angular.module('blocktrail.wallet')
         $scope.form = {selected: ''};
 
         $scope.updateSettings = function(){
-            settingsService.$store().then(function(data) {
+            settingsService.$store().then(function() {
                 $rootScope.changeLanguage(data.language);
+                settingsService.$syncSettingsUp();
                 $btBackButtonDelegate.goBack();
             });
         };

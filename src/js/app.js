@@ -55,10 +55,10 @@ angular.module('blocktrail.wallet').config(function() {
 });
 
 angular.module('blocktrail.wallet').run(
-    function($rootScope, $state, $log, $interval, $timeout, CONFIG, $ionicPlatform, $ionicHistory, $cordovaNetwork,
+    function($rootScope, $state, $q, $log, $interval, $timeout, CONFIG, $ionicPlatform, $ionicHistory, $cordovaNetwork,
              $analytics, $ionicSideMenuDelegate, $locale, $btBackButtonDelegate, $cordovaAppVersion,
              $cordovaStatusbar, settingsService, $window, $cordovaClipboard, $cordovaToast, $translate, $cordovaDevice,
-             amMoment) {
+             amMoment, blocktrailLocalisation) {
         $rootScope.CONFIG = CONFIG || {};
         $rootScope.$state = $state;
         $rootScope.$translate = $translate;
@@ -115,7 +115,7 @@ angular.module('blocktrail.wallet').run(
 
         $rootScope.changeLanguage = function(language) {
             $log.debug('changeLanguage: ' + language);
-            settingsService.language = language || $translate.preferredLanguage() || CONFIG.FALLBACK_LANGUAGE || 'en';
+            settingsService.language = language || blocktrailLocalisation.preferredAvailableLanguage() || CONFIG.FALLBACK_LANGUAGE || 'en';
 
             var momentLocale = settingsService.language;
             if (momentLocale == 'cn') {
