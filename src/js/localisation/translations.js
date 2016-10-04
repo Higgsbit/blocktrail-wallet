@@ -97,6 +97,7 @@ angular.module('blocktrail.localisation', [
             return preferred;
         };
 
+        // enabled languages
         var languages = [
             'en-US',
             'en',
@@ -106,6 +107,8 @@ angular.module('blocktrail.localisation', [
             // 'ru',
             // 'cn'
         ];
+        // language aliases used to map system language to a language key
+        //  mapping won't work without these so without a working alias languages will never be abled
         var aliases = {
             'en-US': 'en-US',
             'en-*': 'en',
@@ -116,19 +119,40 @@ angular.module('blocktrail.localisation', [
             'cn-*': 'cn'
         };
 
+        // names used for translation keys
+        var names = {
+            nl: 'DUTCH',
+            en: 'ENGLISH',
+            en_US: 'ENGLISH_US',
+            fr: 'FRENCH',
+            es: 'SPANISH',
+            cn: 'CHINESE',
+            ru: 'RUSSIAN'
+        };
+
+        var languageName = function(langKey) {
+            return names[langKey];
+        };
+
         var registerLanguages = function() {
             $translateProvider.registerAvailableLanguageKeys(languages, aliases);
         };
 
+        var getLanguages = function() {
+            return languages;
+        };
+
         var enableLanguage = function(language, _aliases) {
             if (languages.indexOf(language) === -1) {
+                console.log('enableLanguage', language);
+
                 languages.push(language);
                 _.each(_aliases, function(v, k) {
                     aliases[k] = v;
                 });
-            }
 
-            registerLanguages();
+                registerLanguages();
+            }
         };
 
         var isAvailableLanguage = function(language) {
@@ -136,16 +160,23 @@ angular.module('blocktrail.localisation', [
         };
 
         var determinePreferredLanguage = function() {
-            return negotiateLocale(getFirstBrowserLanguage());
+            var r = negotiateLocale(getFirstBrowserLanguage());
+            console.log('determinePreferredLanguage', r);
+            return r;
         };
 
         var preferredAvailableLanguage = function() {
             var preferredLanguage = determinePreferredLanguage();
-            return isAvailableLanguage(preferredLanguage) ? preferredLanguage : null;
+            var r = isAvailableLanguage(preferredLanguage) ? preferredLanguage : null;
+            console.log('preferredAvailableLanguage', preferredLanguage, r);
+            return r;
         };
 
         var setupPreferredLanguage = function() {
-            $translateProvider.preferredLanguage(preferredAvailableLanguage() || 'en');
+            var language = preferredAvailableLanguage() || 'en';
+            $translateProvider.preferredLanguage(language);
+
+            return language;
         };
 
         // expose as provider
@@ -156,6 +187,8 @@ angular.module('blocktrail.localisation', [
         this.enableLanguage = enableLanguage;
         this.registerLanguages = registerLanguages;
         this.determinePreferredLanguage = determinePreferredLanguage;
+        this.languageName = languageName;
+        this.getLanguages = getLanguages;
 
         // expose as service
         this.$get = function() {
@@ -166,7 +199,9 @@ angular.module('blocktrail.localisation', [
                 setupPreferredLanguage: setupPreferredLanguage,
                 enableLanguage: enableLanguage,
                 registerLanguages: registerLanguages,
-                determinePreferredLanguage: determinePreferredLanguage
+                determinePreferredLanguage: determinePreferredLanguage,
+                languageName: languageName,
+                getLanguages: getLanguages
             };
         };
     })

@@ -1,6 +1,6 @@
 angular.module('blocktrail.wallet')
-    .controller('WalletCtrl', function($q, $log, $scope, $rootScope, $interval, storageService, sdkService, $translate,
-                                       Wallet, Contacts, CONFIG, settingsService, $timeout, $analytics, $cordovaVibration, $cordovaToast) {
+    .controller('WalletCtrl', function($q, $log, $scope, $http, blocktrailLocalisation, $rootScope, $interval, storageService, sdkService, $translate,
+                                       Wallet, Contacts, CONFIG, settingsService, $cordovaDialogs, $timeout, $analytics, $cordovaVibration, $cordovaToast) {
 
         // wait 200ms timeout to allow view to render before hiding loadingscreen
         $timeout(function() {
@@ -13,6 +13,68 @@ angular.module('blocktrail.wallet')
                 }
             });
         }, 400);
+
+        /*
+         * check for extra languages to enable
+         *  if one is preferred, prompt user to switch
+         */
+        $http.get(CONFIG.API_URL + "/v1/" + (CONFIG.TESTNET ? "tBTC" : "BTC") + "/mywallet/config?v=" + CONFIG.VERSION)
+            .then(function(result) {
+                return result.data.extraLanguages;
+            })
+            .then(function(extraLanguages) {
+                return settingsService.$isLoaded().then(function() {
+                    // filter out languages we already know
+                    var knownLanguages = blocktrailLocalisation.getLanguages();
+                    extraLanguages = extraLanguages.filter(function(language) {
+                        return knownLanguages.indexOf(language) === -1;
+                    });
+
+                    if (extraLanguages.length === 0) {
+                        return;
+                    }
+                    
+                    // enable extra languages
+                    _.each(extraLanguages, function(extraLanguage) {
+                        blocktrailLocalisation.enableLanguage(extraLanguage, {});
+                    });
+    
+                    // determine (new) preferred language
+                    var preferredLanguage = blocktrailLocalisation.setupPreferredLanguage();
+
+                    // store extra languages
+                    settingsService.extraLanguages = settingsService.extraLanguages.concat(extraLanguages).unique();
+                    return settingsService.$store()
+                        .then(function() {
+                            // check if we have a new preferred language
+                            if (preferredLanguage != settingsService.language && extraLanguages.indexOf(preferredLanguage) !== -1) {
+                                // prompt to enable
+                                return $cordovaDialogs.confirm(
+                                    $translate.instant('MSG_BETTER_LANGUAGE', {
+                                        oldLanguage: $translate.instant(blocktrailLocalisation.languageName(settingsService.language)),
+                                        newLanguage: $translate.instant(blocktrailLocalisation.languageName(preferredLanguage))
+                                    }).sentenceCase(),
+                                    $translate.instant('MSG_BETTER_LANGUAGE_TITLE').capitalize(),
+                                    [$translate.instant('OK'), $translate.instant('CANCEL').sentenceCase()]
+                                )
+                                    .then(function(dialogResult) {
+                                        if (dialogResult == 2) {
+                                            return;
+                                        }
+
+                                        // enable new language
+                                        settingsService.language = preferredLanguage;
+                                        $rootScope.changeLanguage(preferredLanguage);
+
+                                        return settingsService.$store();
+                                    })
+                                ;
+                            }
+                        })
+                    ;
+                });
+            })
+            .then(function() {}, function(e) { console.error('extraLanguages', e && (e.msg || e.message || "" + e)); });
 
         if (!$rootScope.settings.enablePolling) {
             Wallet.disablePolling();

@@ -8,6 +8,7 @@ angular.module('blocktrail.wallet').service(
         username:  '',
         email:  null,
         language: null,
+        extraLanguages: [],
         timezone:  "GMT+1",
         localCurrency:  "EUR",
         profilePic:  null,

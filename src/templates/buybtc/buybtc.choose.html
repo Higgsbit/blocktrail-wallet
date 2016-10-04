@@ -6,7 +6,7 @@
     <ion-content>
         <div ng-if="chooseRegion">
             <!-- CHOOSE REGION -->
-            <div ng-if="!chooseRegion.region" ng-controller="BuyBTCChooseRegionCtrl">
+            <div ng-if="!chooseRegion.code" ng-controller="BuyBTCChooseRegionCtrl">
                 <div class="item item-text-wrap">
                     <h2 class="text-neutral sentence-case">{{ 'BUYBTC_CHOOSE_REGION_TITLE' | translate }}</h2>
                     <p class="padding-t sentence-case" ng-bind-html="'BUYBTC_CHOOSE_REGION_BODY' | translate | nl2br"></p>
@@ -17,6 +17,12 @@
                     <div class="list list-inset">
                         <div class="item item-button-right" ng-click="selectUS()">
                             <span class="sentence-case">USA</span>
+                            <button class="button button-clear">
+                                <i class="icon ion-chevron-right"></i>
+                            </button>
+                        </div>
+                        <div class="item item-button-right" ng-repeat="region in regions" ng-click="selectRegion(region.code, region.name)">
+                            <span class="sentence-case">{{ region.name | translate }}</span>
                             <button class="button button-clear">
                                 <i class="icon ion-chevron-right"></i>
                             </button>
@@ -33,8 +39,8 @@
                 <div ng-if="usSelected">
                     <h3 class="group-title capitalise">{{ 'BUYBTC_REGIONS' | translate }}</h3>
                     <div class="list list-inset">
-                        <div ng-repeat="usState in usStates" class="item item-button-right" ng-click="selectRegion(usState.region, usState.name)">
-                            <span class="sentence-case">{{ usState.name }} ({{ usState.region.replace('US-', '') }})</span>
+                        <div ng-repeat="usState in usStates" class="item item-button-right" ng-click="selectRegion(usState.code, usState.name)">
+                            <span class="sentence-case">{{ usState.name }} ({{ usState.code.replace('US-', '') }})</span>
                             <button class="button button-clear">
                                 <i class="icon ion-chevron-right"></i>
                             </button>
@@ -50,9 +56,9 @@
             </div>
 
             <!-- REGION NOT OK -->
-            <div ng-if="chooseRegion.region && !chooseRegion.regionOk">
+            <div ng-if="chooseRegion.code && !chooseRegion.regionOk">
                 <div class="item item-text-wrap">
-                    <h2 class="text-neutral capitalise">{{ 'BUYBTC_REGION_NOTOK_TITLE' | translate }}: <span class="capitalise">{{ chooseRegion.region | translate }}</span></h2>
+                    <h2 class="text-neutral capitalise">{{ 'BUYBTC_REGION_NOTOK_TITLE' | translate }}: <span class="capitalise">{{ chooseRegion.name | translate }}</span></h2>
                     <p class="padding-t sentence-case" ng-bind-html="'BUYBTC_REGION_NOTOK_BODY' | translate | nl2br"></p>
                 </div>
 
@@ -68,7 +74,7 @@
             </div>
 
             <!-- REGION OK -->
-            <div ng-if="chooseRegion.region && chooseRegion.regionOk">
+            <div ng-if="chooseRegion.code && chooseRegion.regionOk">
                 <div class="item item-text-wrap">
                     <h2 class="text-neutral">{{ 'BUYBTC_CHOOSE_TITLE' | translate }}</h2>
                     <p class="padding-t" ng-bind-html="'BUYBTC_CHOOSE_SUBTITLE' | translate | nl2br"></p>
@@ -76,7 +82,7 @@
 
                 <h3 class="group-title capitalise">{{ 'BUYBTC_PROVIDERS' | translate }}</h3>
                 <div class="list list-inset">
-                    <div class="item item-button-right" ng-click="goGlideraBrowser()">
+                    <div ng-if="brokers.indexOf('glidera') !== -1" class="item item-button-right" ng-click="goGlideraBrowser()">
                         <span class="sentence-case">Glidera</span>
                         <button class="button button-clear">
                             <i class="icon ion-chevron-right"></i>

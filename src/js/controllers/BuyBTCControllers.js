@@ -1,10 +1,7 @@
 angular.module('blocktrail.wallet')
     .controller('BuyBTCChooseCtrl', function($q, $scope, $state, $rootScope, $cordovaDialogs, settingsService, $ionicLoading,
                                              $translate, $ionicScrollDelegate, glideraService, $log) {
-        var okRegions = [
-            'US-CA',
-            'US-'
-        ];
+        $scope.brokers = [];
 
         // load chooseRegion from settingsService
         //  show loading spinner while we wait (should be microseconds)
@@ -14,27 +11,42 @@ angular.module('blocktrail.wallet')
             hideOnStateChange: true
         });
         settingsService.$isLoaded().then(function() {
-            $scope.chooseRegion = _.defaults({}, settingsService.buyBTCRegion, {
-                region: null,
-                name: null,
-                regionOk: okRegions.indexOf(settingsService.buyBTCRegion ? settingsService.buyBTCRegion.region : null) !== -1
+            glideraService.regions().then(function(regions) {
+                $scope.regions = regions;
+            });
+            glideraService.usStates().then(function(usStates) {
+                $scope.usStates = usStates;
             });
 
-            $ionicLoading.hide();
+            $scope.chooseRegion = _.defaults({}, settingsService.buyBTCRegion, {
+                code: null,
+                name: null
+            });
+
+            return glideraService.regionBrokers($scope.chooseRegion.code).then(function(brokers) {
+                $scope.brokers = brokers;
+                $scope.chooseRegion.regionOk = $scope.brokers.length;
+
+                $ionicLoading.hide();
+            });
         });
 
         $scope.selectRegion = function(region, name) {
             $log.debug('selectRegion: ' + region + ' (' + name + ')');
-            $scope.chooseRegion.region = region;
+            $scope.chooseRegion.code = region;
             $scope.chooseRegion.name = name;
-            $scope.chooseRegion.regionOk = okRegions.indexOf(region) !== -1;
 
-            $ionicScrollDelegate.scrollTop();
+            glideraService.regionBrokers($scope.chooseRegion.code).then(function(brokers) {
+                $scope.brokers = brokers;
+                $scope.chooseRegion.regionOk = $scope.brokers.length;
 
-            settingsService.$isLoaded().then(function() {
-                settingsService.buyBTCRegion = _.defaults({}, $scope.chooseRegion);
-                return settingsService.$store();
-            })
+                $ionicScrollDelegate.scrollTop();
+
+                settingsService.$isLoaded().then(function() {
+                    settingsService.buyBTCRegion = _.defaults({}, $scope.chooseRegion);
+                    return settingsService.$store();
+                })
+            });
         };
 
         $scope.goGlideraBrowser = function() {
@@ -115,63 +127,7 @@ angular.module('blocktrail.wallet')
 
 angular.module('blocktrail.wallet')
     .controller('BuyBTCChooseRegionCtrl', function($q, $scope, $log) {
-        var BROKERS = {
-            GLIDERA: 'glidera'
-        };
         $scope.usSelected = false;
-        $scope.usStates = [
-            {region: 'US-AL', name: 'Alabama', brokers: []},
-            {region: 'US-AK', name: 'Alaska', brokers: []},
-            {region: 'US-AZ', name: 'Arizona', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-AR', name: 'Arkansas', brokers: []},
-            {region: 'US-CA', name: 'California', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-CO', name: 'Colorado', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-CT', name: 'Connecticut', brokers: []},
-            {region: 'US-DE', name: 'Delaware', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-DC', name: 'District of Columbia', brokers: []},
-            {region: 'US-FL', name: 'Florida', brokers: []},
-            {region: 'US-GA', name: 'Georgia', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-HI', name: 'Hawaii', brokers: []},
-            {region: 'US-ID', name: 'Idaho', brokers: []},
-            {region: 'US-IL', name: 'Illinois', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-IN', name: 'Indiana', brokers: []},
-            {region: 'US-IA', name: 'Iowa', brokers: []},
-            {region: 'US-KS', name: 'Kansas', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-KY', name: 'Kentucky', brokers: []},
-            {region: 'US-LA', name: 'Louisiana', brokers: []},
-            {region: 'US-ME', name: 'Maine', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-MD', name: 'Maryland', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-MA', name: 'Massachusetts', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-MI', name: 'Michigan', brokers: []},
-            {region: 'US-MN', name: 'Minnesota', brokers: []},
-            {region: 'US-MS', name: 'Mississippi', brokers: []},
-            {region: 'US-MO', name: 'Missouri', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-MT', name: 'Montana', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-NE', name: 'Nebraska', brokers: []},
-            {region: 'US-NV', name: 'Nevada', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-NH', name: 'New Hampshire', brokers: []},
-            {region: 'US-NJ', name: 'New Jersey', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-NM', name: 'New Mexico', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-NY', name: 'New York', brokers: []},
-            {region: 'US-NC', name: 'North Carolina', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-ND', name: 'North Dakota', brokers: []},
-            {region: 'US-OH', name: 'Ohio', brokers: []},
-            {region: 'US-OK', name: 'Oklahoma', brokers: []},
-            {region: 'US-OR', name: 'Oregon', brokers: []},
-            {region: 'US-PA', name: 'Pennsylvania', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-RI', name: 'Rhode Island', brokers: []},
-            {region: 'US-SC', name: 'South Carolina', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-SD', name: 'South Dakota', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-TN', name: 'Tennessee', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-TX', name: 'Texas', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-UT', name: 'Utah', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-VT', name: 'Vermont', brokers: []},
-            {region: 'US-VA', name: 'Virginia', brokers: []},
-            {region: 'US-WA', name: 'Washington', brokers: []},
-            {region: 'US-WV', name: 'West Virginia', brokers: []},
-            {region: 'US-WI', name: 'Wisconsin', brokers: [BROKERS.GLIDERA]},
-            {region: 'US-WY', name: 'Wyoming', brokers: []}
-        ];
 
         $scope.selectUS = function() {
             $scope.usSelected = true;

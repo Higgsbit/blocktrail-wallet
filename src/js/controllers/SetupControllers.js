@@ -53,17 +53,10 @@ angular.module('blocktrail.wallet')
             $btBackButtonDelegate.setHardwareBackButton($btBackButtonDelegate._default);
         };
     })
-    .controller('SetupStartCtrl', function($scope, $state, $q, blocktrailLocalisation) {
+    .controller('SetupStartCtrl', function($scope, $http, CONFIG, $state, $q, blocktrailLocalisation) {
         $scope.slider = {
             displayed: 0
         };
-
-        $q.when(['nl']).then(function(enabledLanguages) {
-            _.each(enabledLanguages, function(enabledLanguage) {
-                blocktrailLocalisation.enableLanguage(enabledLanguage, {});
-                blocktrailLocalisation.setupPreferredLanguage();
-            });
-        });
 
         $scope.newAccount = function() {
             $state.go('app.setup.register');

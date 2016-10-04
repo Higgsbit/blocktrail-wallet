@@ -366,7 +366,19 @@ angular.module('blocktrail.wallet').config(
         $stateProvider
             .state('app', {
                 abstract: true,
-                template: "<ion-nav-view />"
+                template: "<ion-nav-view />",
+                resolve: {
+                    /**
+                     * load extra languages we are aware of
+                     */
+                    extraLanguages: function(settingsService, blocktrailLocalisation) {
+                        return settingsService.$isLoaded().then(function() {
+                            _.each(settingsService.extraLanguages, function(extraLanguage) {
+                                blocktrailLocalisation.enableLanguage(extraLanguage);
+                            });
+                        });
+                    }
+                }
             })
 
             /*---Launch---*/
@@ -403,12 +415,51 @@ angular.module('blocktrail.wallet').config(
                 controller: "SetupCtrl",
                 templateUrl: "templates/setup/setup.html",
                 resolve: {
-                    settings: function(settingsService, $rootScope, $translate, $log) {
+                    /**
+                     * check for extra languages to enable
+                     * if new language is new preferred, set it
+                     */
+                    preferredLanguage: function(CONFIG, $rootScope, settingsService, blocktrailLocalisation, $http) {
+                        return $http.get(CONFIG.API_URL + "/v1/" + (CONFIG.TESTNET ? "tBTC" : "BTC") + "/mywallet/config?v=" + CONFIG.VERSION)
+                            .then(function(result) {
+                                return result.data.extraLanguages;
+                            })
+                            .then(function(extraLanguages) {
+                                // filter out languages we already know
+                                var knownLanguages = blocktrailLocalisation.getLanguages();
+                                extraLanguages = extraLanguages.filter(function(language) {
+                                    return knownLanguages.indexOf(language) === -1;
+                                });
+
+                                if (extraLanguages.length === 0) {
+                                    return;
+                                }
+                                
+                                // enable extra languages
+                                _.each(extraLanguages, function(extraLanguage) {
+                                    blocktrailLocalisation.enableLanguage(extraLanguage, {});
+                                });
+
+                                // determine (new) preferred language
+                                var preferredLanguage = blocktrailLocalisation.setupPreferredLanguage();
+
+                                // activate preferred language
+                                $rootScope.changeLanguage(preferredLanguage);
+
+                                // store preferred language
+                                return settingsService.$isLoaded().then(function() {
+                                    settingsService.language = preferredLanguage;
+                                    settingsService.extraLanguages = settingsService.extraLanguages.concat(extraLanguages).unique();
+
+                                    return settingsService.$store();
+                                });
+                            })
+                            .then(function() {}, function(e) { console.error(e); });
+                    },
+                    settings: function(settingsService, $rootScope) {
                         //do an initial load of the user's settings (will return defaults if none have been saved yet)
                         return settingsService.$isLoaded().then(function() {
                             $rootScope.settings = settingsService;
-                            $rootScope.changeLanguage(settingsService.language);
-
                             return settingsService;
                         });
                     }
