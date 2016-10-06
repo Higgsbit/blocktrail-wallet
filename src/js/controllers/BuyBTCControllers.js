@@ -97,7 +97,7 @@ angular.module('blocktrail.wallet')
                         }
                     });
                 } else {
-                    $state.go('app.wallet.buybtc.buy', {provider: 'glidera'});
+                    $state.go('app.wallet.buybtc.buy', {broker: 'glidera'});
                 }
             })
                 .then(function() {
@@ -141,7 +141,7 @@ angular.module('blocktrail.wallet')
             .then(function() {
                 return glideraService.userCanTransact().then(function(userCanTransact) {
                     if (userCanTransact) {
-                        $state.go('app.wallet.buybtc.buy', {provider: 'glidera'});
+                        $state.go('app.wallet.buybtc.buy', {broker: 'glidera'});
                     } else {
                         $state.go('app.wallet.buybtc.choose');
                     }
@@ -163,7 +163,7 @@ angular.module('blocktrail.wallet')
 angular.module('blocktrail.wallet')
     .controller('BuyBTCBuyCtrl', function($scope, $state, $rootScope, $ionicLoading, $cordovaDialogs, glideraService,
                                           $stateParams, $timeout, $interval, $translate, $filter, CurrencyConverter) {
-        $scope.buyProvider = $stateParams.provider;
+        $scope.broker = $stateParams.broker;
 
         $scope.fetchingMainPrice = true;
         $scope.priceBTC = null;
@@ -219,9 +219,11 @@ angular.module('blocktrail.wallet')
             $scope.fetchingMainPrice = true;
 
             glideraService.buyPrices(1.0).then(function(result) {
-                $scope.priceBTC = result.total;
+                $timeout(function() {
+                    $scope.priceBTC = result.total;
 
-                $scope.fetchingMainPrice = false;
+                    $scope.fetchingMainPrice = false;
+                });
             });
         };
 
@@ -233,22 +235,26 @@ angular.module('blocktrail.wallet')
                 $scope.sendInput.feeValue = null;
 
                 glideraService.buyPrices(null, $scope.sendInput.fiatValue).then(function(result) {
-                    $scope.sendInput.btcValue = parseFloat(result.qty);
-                    $scope.sendInput.feeValue = parseFloat(result.fees);
-                    $scope.sendInput.feePercentage = ($scope.sendInput.feeValue / $scope.sendInput.fiatValue) * 100;
-                    $scope.priceUuid = result.priceUuid;
-                    $scope.fetchingInputPrice = false;
+                    $timeout(function() {
+                        $scope.sendInput.btcValue = parseFloat(result.qty);
+                        $scope.sendInput.feeValue = parseFloat(result.fees);
+                        $scope.sendInput.feePercentage = ($scope.sendInput.feeValue / $scope.sendInput.fiatValue) * 100;
+                        $scope.priceUuid = result.priceUuid;
+                        $scope.fetchingInputPrice = false;
+                    });
                 });
             } else {
                 $scope.sendInput.fiatValue = null;
                 $scope.sendInput.feeValue = null;
 
                 glideraService.buyPrices($scope.sendInput.btcValue, null).then(function(result) {
-                    $scope.sendInput.fiatValue = parseFloat(result.total);
-                    $scope.sendInput.feeValue = parseFloat(result.fees);
-                    $scope.sendInput.feePercentage = ($scope.sendInput.feeValue / $scope.sendInput.fiatValue) * 100;
-                    $scope.priceUuid = result.priceUuid;
-                    $scope.fetchingInputPrice = false;
+                    $timeout(function() {
+                        $scope.sendInput.fiatValue = parseFloat(result.total);
+                        $scope.sendInput.feeValue = parseFloat(result.fees);
+                        $scope.sendInput.feePercentage = ($scope.sendInput.feeValue / $scope.sendInput.fiatValue) * 100;
+                        $scope.priceUuid = result.priceUuid;
+                        $scope.fetchingInputPrice = false;
+                    });
                 });
             }
         };
@@ -289,7 +295,7 @@ angular.module('blocktrail.wallet')
         init();
 
         $scope.buyBTC = function() {
-            if ($scope.buyProvider == 'glidera') {
+            if ($scope.broker == 'glidera') {
 
                 return $cordovaDialogs.confirm(
                     $translate.instant('MSG_BUYBTC_CONFIRM_BODY', {
